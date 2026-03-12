@@ -1,7 +1,3 @@
-============================================================
-     COMPUTER VISION - ELABORATED FUNCTION REFERENCE
-============================================================
-
 ------------------------------------------------------------
 1. READING & DISPLAYING IMAGES
 ------------------------------------------------------------
@@ -242,7 +238,67 @@ Channel index reference:
   [:,:,2] = Blue channel
 
 ------------------------------------------------------------
-10. COMMON MISTAKES TO AVOID
+10. PINHOLE CAMERA & PERSPECTIVE PROJECTION
+------------------------------------------------------------
+
+CONCEPT:
+  - A 3D point (X, Y, Z) in the real world gets projected onto
+    a 2D image plane using a pinhole camera model
+  - The camera is at the origin (0, 0, 0)
+  - The image plane sits at distance f (focal length) along Z axis
+
+PROJECTION FORMULA:
+  x_proj = f * X / Z
+  y_proj = f * Y / Z
+  - Divide by Z = objects farther away appear smaller (perspective!)
+  - f = focal length (controls zoom/field of view)
+
+CODE:
+  f = 5   # focal length
+
+  points_3D = np.array([
+      [X1, Y1, Z1],
+      [X2, Y2, Z2],
+      ...
+  ])
+
+  X, Y, Z = points_3D[:,0], points_3D[:,1], points_3D[:,2]
+
+  x_proj = f * X / Z     # projected x on image plane
+  y_proj = f * Y / Z     # projected y on image plane
+  z_proj = np.ones_like(x_proj) * f   # all projected points sit at z=f
+
+  points_proj = np.column_stack((x_proj, y_proj, z_proj))
+
+VISUALIZING IN 3D:
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')   # 3D axes
+
+  ax.scatter(x, y, z, s=80)    # plot points (s = dot size)
+  ax.text(x, y, z, "label")    # add text label at a point
+
+  # Draw image plane as a flat surface at z=f
+  xx, yy = np.meshgrid(np.linspace(-3,3,2), np.linspace(-3,3,2))
+  zz = np.ones_like(xx) * f
+  ax.plot_surface(xx, yy, zz, alpha=0.2)   # alpha = transparency
+
+  # Draw rays from camera to 3D points
+  ax.plot([x_start, x_end], [y_start, y_end], [z_start, z_end])
+
+  ax.view_init(elev=20, azim=40)   # set camera viewing angle
+  ax.set_xlabel("X")
+  ax.set_ylabel("Y")
+  ax.set_zlabel("Z")
+
+KEY CONCEPTS TO REMEMBER:
+  - Focal length f  -> larger f = more zoom, narrower view
+  - Z in denominator -> larger Z (farther) = smaller projected point
+  - Image plane is at Z = f
+  - Camera sits at origin (0,0,0)
+  - np.column_stack() joins arrays as columns into one matrix
+
+------------------------------------------------------------
+11. COMMON MISTAKES TO AVOID
 ------------------------------------------------------------
 
 ✗ plt.show(img)          -> plt.show() takes NO arguments
