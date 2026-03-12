@@ -1,0 +1,254 @@
+============================================================
+     COMPUTER VISION - ELABORATED FUNCTION REFERENCE
+============================================================
+
+------------------------------------------------------------
+1. READING & DISPLAYING IMAGES
+------------------------------------------------------------
+
+cv2.imread('image.jpg')
+  - Reads image from disk
+  - Returns a NumPy array of shape (height, width, 3)
+  - Loads in BGR format by default (NOT RGB!)
+  - Second argument options:
+      cv2.IMREAD_COLOR     (default, BGR)
+      cv2.IMREAD_GRAYSCALE or just 0  (grayscale)
+      cv2.IMREAD_UNCHANGED (-1, includes alpha channel)
+
+cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+  - Converts color space
+  - MUST do this before plt.imshow() or colors look wrong
+  - Other useful conversions:
+      cv2.COLOR_BGR2GRAY   -> convert to grayscale
+      cv2.COLOR_RGB2BGR    -> reverse
+
+plt.imshow(img)
+  - Displays image inside a Jupyter notebook
+  - For grayscale: plt.imshow(gray, cmap='gray')
+  - Does NOT display until plt.show() is called
+
+plt.show()
+  - Renders and displays the plot
+  - Takes NO arguments — plt.show(img) will crash!
+
+img.shape
+  - Returns (height, width, channels)
+  - Grayscale image shape: (height, width)  — no channels
+  - Color image shape: (height, width, 3)
+
+------------------------------------------------------------
+2. RESIZE, FLIP, SAVE
+------------------------------------------------------------
+
+cv2.resize(img, (width, height))
+  - Resizes to exact pixel dimensions
+  - NOTE: it's (width, height) NOT (height, width)!
+
+cv2.resize(img, None, fx=0.5, fy=0.5)
+  - Resizes by ratio (0.5 = half size, 2.0 = double)
+  - fx = width ratio, fy = height ratio
+  - Interpolation methods:
+      cv2.INTER_NEAREST  -> fastest, pixelated
+      cv2.INTER_LINEAR   -> default, good quality
+      cv2.INTER_CUBIC    -> slower, smoother
+      cv2.INTER_LANCZOS4 -> best quality, slowest
+
+cv2.flip(img, flipCode)
+  - flipCode =  0 -> vertical flip (upside down)
+  - flipCode =  1 -> horizontal flip (mirror)
+  - flipCode = -1 -> both flips combined
+
+cv2.imwrite('filename.jpg', img)
+  - Saves image to disk
+  - Image must be in BGR format for correct colors
+  - Returns True if successful
+
+------------------------------------------------------------
+3. BRIGHTNESS & CONTRAST
+------------------------------------------------------------
+
+cv2.addWeighted(src1, alpha, src2, beta, gamma)
+  - Formula: output = src1*alpha + src2*beta + gamma
+  - For brightness/contrast:
+      src1    = your image
+      alpha   = contrast multiplier (1.0 = no change, 1.5 = more contrast)
+      src2    = np.zeros_like(img)  (blank image)
+      beta    = 0
+      gamma   = brightness offset (+10 = brighter, -10 = darker)
+
+  - Example:
+      result = cv2.addWeighted(img, 1.5, np.zeros_like(img), 0, 10)
+
+  !! All arguments must be POSITIONAL — no keyword args !!
+
+------------------------------------------------------------
+4. INTENSITY TRANSFORMS
+------------------------------------------------------------
+
+NEGATIVE TRANSFORM
+  negative = 255 - img
+  - Inverts all pixel values
+  - Bright pixels become dark, dark become bright
+  - Works on both color and grayscale
+
+LOG TRANSFORM
+  log_img = np.log1p(img)
+  log_img = (255 * log_img / np.max(log_img)).astype(np.uint8)
+  - Enhances details in dark regions
+  - Compresses bright pixel values
+  - np.log1p = log(1 + pixel) to avoid log(0)
+  - Must normalize back to 0-255 range after
+
+GAMMA CORRECTION
+  gamma_img = np.uint8(np.power(img/255.0, gamma) * 255)
+  - gamma < 1 : brightens image (e.g. 0.5)
+  - gamma > 1 : darkens image  (e.g. 2.0)
+  - gamma = 1 : no change
+  - Must divide by 255 first, apply power, multiply back
+
+------------------------------------------------------------
+5. SHARPENING & FILTERING
+------------------------------------------------------------
+
+cv2.filter2D(img, -1, kernel)
+  - Applies any custom kernel (filter) to image
+  - -1 means output depth same as input
+  - Kernel is a small matrix that slides over image
+  - Sharpening kernel:
+      kernel = np.array([[0, -1,  0],
+                         [-1,  5, -1],
+                         [ 0, -1,  0]])
+  - The center value (5) boosts the pixel
+  - Surrounding -1s subtract neighbors = sharpens edges
+
+cv2.Laplacian(img, cv2.CV_64F)
+  - Detects edges using second-order derivative
+  - cv2.CV_64F = 64-bit float output (needed for negative values)
+  - Highlights rapid intensity changes (edges)
+
+------------------------------------------------------------
+6. GEOMETRIC TRANSFORMS
+------------------------------------------------------------
+
+TRANSLATION (shifting image position)
+  T = np.float32([[1, 0, tx],
+                  [0, 1, ty]])
+  result = cv2.warpAffine(img, T, (img.shape[1], img.shape[0]))
+  - tx = pixels to shift right (negative = left)
+  - ty = pixels to shift down  (negative = up)
+  - Size argument is (width, height) = (cols, rows)
+
+ROTATION
+  center = (w//2, h//2)
+  R = cv2.getRotationMatrix2D(center, angle, scale)
+  result = cv2.warpAffine(img, R, (w, h))
+  - center = point to rotate around (usually image center)
+  - angle  = degrees counterclockwise
+  - scale  = 1.0 means no zoom
+
+cv2.warpAffine(img, M, (width, height))
+  - Applies any 2x3 affine transformation matrix M
+  - Used for both translation AND rotation
+  - Size = (width, height) of output image
+
+------------------------------------------------------------
+7. MORPHOLOGICAL OPERATORS
+------------------------------------------------------------
+(These work on binary/grayscale images)
+
+KERNEL (Structuring Element)
+  kernel = np.ones((5,5), np.uint8)
+  - Defines the size/shape of the operation
+  - Bigger kernel = stronger effect
+
+cv2.erode(img, kernel, iterations=1)
+  - Shrinks white (bright) regions
+  - Removes small white noise dots
+  - More iterations = more erosion
+
+cv2.dilate(img, kernel, iterations=1)
+  - Grows white (bright) regions
+  - Fills small black holes
+  - More iterations = more dilation
+
+cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+  - Opening = Erode THEN Dilate
+  - Removes small WHITE noise from background
+  - Use when image has white dots/speckles
+
+cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+  - Closing = Dilate THEN Erode
+  - Fills small BLACK holes inside objects
+  - Use when image has black holes/gaps
+
+cv2.morphologyEx(img, cv2.MORPH_GRADIENT, kernel)
+  - Gradient = Dilate MINUS Erode
+  - Produces outline/edge of objects
+  - Good for edge detection
+
+MEMORY TRICK:
+  OPEN  = starts with E (Erode first) -> removes white noise
+  CLOSE = starts with D (Dilate first) -> fills black holes
+
+------------------------------------------------------------
+8. FOURIER TRANSFORM (DFT)
+------------------------------------------------------------
+
+cv2.dft(np.float32(gray), flags=cv2.DFT_COMPLEX_OUTPUT)
+  - Converts image from spatial domain to frequency domain
+  - Must convert to float32 first
+  - Returns complex output (real + imaginary parts)
+  - Low frequencies = overall brightness/shape
+  - High frequencies = edges and fine details
+
+np.fft.fftshift(dft)
+  - Shifts zero-frequency component to center of image
+  - Makes spectrum easier to visualize and filter
+
+cv2.magnitude(fshift[:,:,0], fshift[:,:,1])
+  - Computes magnitude from real ([:,:,0]) and imaginary ([:,:,1]) parts
+  - magnitude = sqrt(real^2 + imaginary^2)
+
+Visualizing the spectrum:
+  magnitude = 20 * np.log(cv2.magnitude(...))
+  - log scale makes it easier to see
+  - Multiply by 20 to stretch values
+
+LOW PASS FILTER (keep only low frequencies = blur):
+  mask = np.zeros((row, col, 2), np.uint8)
+  mask[center_row-30:center_row+30, center_col-30:center_col+30] = 1
+  fft_shift = shift * mask         # apply mask
+  fft_ifft_shift = np.fft.ifftshift(fft_shift)
+  imageThen = cv2.idft(fft_ifft_shift)
+  result = cv2.magnitude(imageThen[:,:,0], imageThen[:,:,1])
+
+------------------------------------------------------------
+9. RGB CHANNEL MANIPULATION
+------------------------------------------------------------
+
+img_arr = np.asarray(Image.open('image.png'))
+  - Opens image as NumPy array using PIL
+  - Shape: (height, width, 3) for RGB
+
+Isolating a single channel:
+  pic_red = img_arr.copy()
+  pic_red[:,:,1] = 0    # zero out green channel
+  pic_red[:,:,2] = 0    # zero out blue channel
+  plt.imshow(pic_red)   # shows only red component
+
+Channel index reference:
+  [:,:,0] = Red channel
+  [:,:,1] = Green channel
+  [:,:,2] = Blue channel
+
+------------------------------------------------------------
+10. COMMON MISTAKES TO AVOID
+------------------------------------------------------------
+
+✗ plt.show(img)          -> plt.show() takes NO arguments
+✗ requests.get(url).astext -> correct is .text
+✗ cv2.addWeighted(img, contrast=1.5, ...)  -> NO keyword args, all positional
+✗ cv2.resize(img, (height, width))  -> it's (WIDTH, height) not (height, width)
+✗ plt.imshow(cv2.imread(img))       -> BGR colors will be wrong, convert first!
+
+============================================================
