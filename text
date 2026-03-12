@@ -1,4 +1,3 @@
-
 ------------------------------------------------------------
 BASICS — Read, Show, Convert
 ------------------------------------------------------------
@@ -86,6 +85,31 @@ fshift = np.fft.fftshift(dft)       # shift zero-frequency to center
 
 # Magnitude spectrum (visualize)
 magnitude = 20 * np.log(cv2.magnitude(fshift[:,:,0], fshift[:,:,1]))
+
+------------------------------------------------------------
+PINHOLE CAMERA & PERSPECTIVE PROJECTION
+------------------------------------------------------------
+f = 5  # focal length
+
+points_3D = np.array([[X, Y, Z], ...])
+X, Y, Z = points_3D[:,0], points_3D[:,1], points_3D[:,2]
+
+x_proj = f * X / Z    # project X onto image plane
+y_proj = f * Y / Z    # project Y onto image plane
+z_proj = np.ones_like(x_proj) * f   # all at depth f
+
+points_proj = np.column_stack((x_proj, y_proj, z_proj))
+
+# 3D plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(X, Y, Z, s=80)
+ax.view_init(elev=20, azim=40)   # viewing angle
+plt.show()
+
+# REMEMBER:
+# x = f * X / Z  <-- the core formula
+# Bigger Z (farther) = smaller projection = perspective!
 
 ------------------------------------------------------------
 QUICK MEMORY TRICKS
