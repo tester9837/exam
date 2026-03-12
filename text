@@ -1,0 +1,103 @@
+
+------------------------------------------------------------
+BASICS — Read, Show, Convert
+------------------------------------------------------------
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+img = cv2.imread('image.jpg')                        # Read (BGR)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)           # Fix colors for matplotlib
+gray = cv2.imread('image.jpg', 0)                    # Read as grayscale directly
+
+plt.imshow(img)              # color image
+plt.imshow(gray, cmap='gray')  # grayscale
+plt.show()                   # NO arguments! just plt.show()
+
+------------------------------------------------------------
+RESIZE, FLIP, SAVE
+------------------------------------------------------------
+resized = cv2.resize(img, (width, height))           # fixed size
+resized = cv2.resize(img, None, fx=0.5, fy=0.5)     # by ratio
+
+cv2.flip(img, 0)    # flip vertical (upside down)
+cv2.flip(img, 1)    # flip horizontal (mirror)
+cv2.flip(img, -1)   # flip both
+
+cv2.imwrite('output.jpg', img)   # save
+
+------------------------------------------------------------
+BRIGHTNESS & CONTRAST
+------------------------------------------------------------
+# order: (src1, alpha, src2, beta, gamma)
+# NO keyword arguments — all positional!
+result = cv2.addWeighted(img, 1.5, np.zeros_like(img), 0, 10)
+#                         ^    ^         ^             ^   ^
+#                        img contrast  zeros          0  brightness
+
+------------------------------------------------------------
+IMAGE TRANSFORMS (Intensity)
+------------------------------------------------------------
+negative = 255 - img                                 # Negative
+
+log_img = np.log1p(img)                              # Log transform
+log_img = (255 * log_img / np.max(log_img)).astype(np.uint8)
+
+gamma = 0.5   # <1 = brighter, >1 = darker
+gamma_img = np.uint8(np.power(img/255.0, gamma) * 255)   # Gamma
+
+------------------------------------------------------------
+SHARPEN & FILTER
+------------------------------------------------------------
+kernel = np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])    # sharpening kernel
+sharpened = cv2.filter2D(img, -1, kernel)
+
+laplacian = cv2.Laplacian(img, cv2.CV_64F)           # edge sharpening
+
+------------------------------------------------------------
+TRANSLATION & ROTATION (Affine)
+------------------------------------------------------------
+# Translation (shift image)
+T = np.float32([[1, 0, tx], [0, 1, ty]])
+translated = cv2.warpAffine(img, T, (img.shape[1], img.shape[0]))
+
+# Rotation
+center = (w//2, h//2)
+R = cv2.getRotationMatrix2D(center, angle=45, scale=1.0)
+rotated = cv2.warpAffine(img, R, (w, h))
+
+------------------------------------------------------------
+MORPHOLOGICAL OPERATORS
+------------------------------------------------------------
+kernel = np.ones((5,5), np.uint8)
+
+cv2.erode(img, kernel, iterations=1)                 # shrinks white regions
+cv2.dilate(img, kernel, iterations=1)                # grows white regions
+
+cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)        # erode→dilate = removes WHITE noise
+cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)       # dilate→erode = removes BLACK holes
+cv2.morphologyEx(img, cv2.MORPH_GRADIENT, kernel)    # dilate - erode = edge outline
+
+------------------------------------------------------------
+FOURIER TRANSFORM (DFT)
+------------------------------------------------------------
+dft = cv2.dft(np.float32(gray), flags=cv2.DFT_COMPLEX_OUTPUT)
+fshift = np.fft.fftshift(dft)       # shift zero-frequency to center
+
+# Magnitude spectrum (visualize)
+magnitude = 20 * np.log(cv2.magnitude(fshift[:,:,0], fshift[:,:,1]))
+
+------------------------------------------------------------
+QUICK MEMORY TRICKS
+------------------------------------------------------------
+plt.show()          -> NO arguments ever!
+BGR->RGB            -> Always fix before plt.imshow()
+addWeighted         -> All positional, no keyword args!
+Gamma < 1           -> Brightens image
+Gamma > 1           -> Darkens image
+OPEN                -> Removes WHITE noise (erode first)
+CLOSE               -> Removes BLACK holes (dilate first)
+warpAffine          -> Used for BOTH translate AND rotate
+filter2D            -> Apply any custom kernel
+
+============================================================
