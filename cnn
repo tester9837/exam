@@ -1,0 +1,62 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import pandas as pd
+import os
+
+# --- 1. DATA (Simplified Loading) ---
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    'train/',
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=(256, 256), # Using the 256x256 from your notebook
+    batch_size=32
+)
+
+# --- 2. THE NOTEBOOK CNN (With Augmentation & Dropout) ---
+model = models.Sequential([
+    # Data Augmentation (Top Layer)
+    layers.RandomFlip("horizontal"),
+    layers.RandomRotation(0.1),
+
+    # Block 1: 32 Filters
+    layers.Conv2D(32, (3,3), padding='same', activation='relu', input_shape=(256,256,3)),
+    layers.MaxPooling2D((2,2)),
+
+    # Block 2: 64 Filters
+    layers.Conv2D(64, (3,3), padding='same', activation='relu'),
+    layers.MaxPooling2D((2,2)),
+
+    # Block 3: 128 Filters
+    layers.Conv2D(128, (3,3), padding='same', activation='relu'),
+    layers.MaxPooling2D((2,2)),
+
+    # Classification Head
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),             # Dropout to prevent overfitting
+    layers.Dense(1, activation='sigmoid')
+])
+
+# --- 3. TRAIN ---
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# EarlyStopping stops training if the model stops getting better
+callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+
+model.fit(train_ds, epochs=10, callbacks=[callback])
+
+# --- 4. SUBMIT ---
+test_path = 'kaggle_test_final/'
+files = os.listdir(test_path)
+results = []
+
+for f in files:
+    img = tf.keras.utils.load_img(test_path + f, target_size=(256, 256))
+    x = tf.keras.utils.img_to_array(img) / 255.0 # Normalization (important for custom CNNs)
+    x = tf.expand_dims(x, 0)
+    
+    pred = model.predict(x)
+    results.append(1 if pred > 0.5 else 0)
+
+pd.DataFrame({'id': files, 'label': results}).to_csv('submission.csv', index=False)
