@@ -1,0 +1,63 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models, applications
+import pandas as pd
+import os
+
+# --- STEP 1: DATA (Loading & Internal Augmentation) ---
+# Replace 'train/' with your actual folder path
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    'train/',
+    validation_split=0.2,
+    subset="training",
+    seed=123,
+    image_size=(224, 224),
+    batch_size=32
+)
+
+val_ds = tf.keras.utils.image_dataset_from_directory(
+    'train/',
+    validation_split=0.2,
+    subset="validation",
+    seed=123,
+    image_size=(224, 224)
+)
+
+# --- STEP 2: MODEL (ResNet + Anti-Overfit Layers) ---
+base = applications.ResNet50(weights='imagenet', include_top=False, input_shape=(224,224,3))
+base.trainable = False
+
+model = models.Sequential([
+    # Data Augmentation (Stops overfitting by 'faking' new images)
+    layers.RandomFlip("horizontal"),
+    layers.RandomRotation(0.1),
+    
+    base,
+    layers.GlobalAveragePooling2D(),
+    layers.Dropout(0.5), # Dropout (Stops neurons from memorizing specific pixels)
+    layers.Dense(1, activation='sigmoid')
+])
+
+# --- STEP 3: TRAIN (With Early Stopping) ---
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Safety net: Stops training if validation loss stops improving
+callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
+
+model.fit(train_ds, validation_data=val_ds, epochs=10, callbacks=[callback])
+
+# --- STEP 4: PREDICT & SUBMIT ---
+# Replace 'test/' with your test image folder path
+test_path = 'kaggle_test_final/'
+files = os.listdir(test_path)
+results = []
+
+for f in files:
+    img = tf.keras.utils.load_img(test_path + f, target_size=(224, 224))
+    x = tf.keras.utils.img_to_array(img)
+    x = tf.expand_dims(x, 0)
+    
+    pred = model.predict(x)
+    results.append(1 if pred > 0.5 else 0)
+
+# Save the final CSV for Kaggle
+pd.DataFrame({'id': files, 'label': results}).to_csv('submission.csv', index=False)
