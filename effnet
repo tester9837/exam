@@ -1,0 +1,38 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models, applications, callbacks
+import pandas as pd, os
+
+# ── CONFIG ───────────────────────────────────────────
+IMG_SIZE, BATCH, EPOCHS = (224, 224), 32, 20
+AUTOTUNE = tf.data.AUTOTUNE
+
+# ── DATA ─────────────────────────────────────────────
+kw = dict(validation_split=0.2, seed=123, image_size=IMG_SIZE, batch_size=BATCH)
+train_ds = tf.keras.utils.image_dataset_from_directory('train/', subset="training",   **kw).prefetch(AUTOTUNE)
+val_ds   = tf.keras.utils.image_dataset_from_directory('train/', subset="validation", **kw).prefetch(AUTOTUNE)
+
+# ── MODEL ────────────────────────────────────────────
+base = applications.EfficientNetB0(weights='imagenet', include_top=False, input_shape=(224,224,3))
+base.trainable = False
+
+model = models.Sequential([
+    layers.RandomFlip("horizontal"), layers.RandomRotation(0.15), layers.Rescaling(1./255),
+    base,
+    layers.GlobalAveragePooling2D(), layers.BatchNormalization(), layers.Dropout(0.4),
+    layers.Dense(1, activation='sigmoid')
+])
+
+# ── TRAIN ────────────────────────────────────────────
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.fit(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=[
+    callbacks.EarlyStopping(monitor='val_loss', patience=4, restore_best_weights=True),
+    callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.3, patience=2, min_lr=1e-6)
+])
+
+# ── PREDICT & SUBMIT ──────────────────────────────────
+files = sorted(os.listdir('kaggle_test_final/'))
+preds = [int(model.predict(tf.expand_dims(tf.keras.utils.img_to_array(
+            tf.keras.utils.load_img(f'kaggle_test_final/{f}', target_size=IMG_SIZE)), 0), verbose=0)[0][0] > 0.5)
+         for f in files]
+
+pd.DataFrame({'id': files, 'label': preds}).to_csv('submission.csv', index=False)
