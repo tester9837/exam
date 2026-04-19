@@ -1,0 +1,14 @@
+import zipfile
+with zipfile.ZipFile('/kaggle/input/competitions/dogs-vs-cats-redux-kernels-edition/train.zip', 'r') as z:
+    z.extractall('/kaggle/working/')
+
+
+
+
+#converrt images to subfolders
+import os, shutil
+
+for f in os.listdir('/kaggle/working/train/'):
+    label = f.split('.')[0]  # 'cat' or 'dog' from filename
+    os.makedirs(f'/kaggle/working/train/{label}', exist_ok=True)
+    shutil.move(f'/kaggle/working/train/{f}', f'/kaggle/working/train/{label}/{f}')
