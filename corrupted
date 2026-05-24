@@ -1,0 +1,15 @@
+def is_corrupted(path):
+    # check 1: unreadable
+    img = cv2.imread(path)
+    if img is None: return True, None
+    
+    # check 2: wrong shape (empty or single pixel)
+    if img.size == 0 or img.shape[0] < 10 or img.shape[1] < 10: return True, None
+    
+    # check 3: all black / all white (blank corrupted images)
+    if img.std() < 1.0: return True, None
+    
+    # check 4: file size too small (< 1KB)
+    if os.path.getsize(path) < 1024: return True, None
+
+    return False, img
